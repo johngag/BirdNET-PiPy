@@ -30,9 +30,32 @@
     >
       <!-- Bird Activity Overview -->
       <div class="bg-white rounded-lg shadow p-4 lg:col-span-3 h-[300px] lg:h-[375px]">
-        <h2 class="text-lg font-semibold mb-2">
-          Bird Activity Overview
-        </h2>
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-lg font-semibold">
+            Bird Activity Overview
+          </h2>
+          <button
+            class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+            :disabled="isRefreshing"
+            @click="refreshDashboard"
+          >
+            <svg
+              class="w-4 h-4"
+              :class="{ 'animate-spin': isRefreshing }"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <span>{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
+          </button>
+        </div>
         <div
           v-if="!isDataEmpty && !detailedBirdActivityError"
           class="flex h-[calc(100%-2rem)]"
@@ -321,6 +344,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
+import { io } from 'socket.io-client'
 import Chart from 'chart.js/auto'
 import { MatrixController, MatrixElement } from 'chartjs-chart-matrix'
 
@@ -348,6 +372,7 @@ export default {
     setup() {
         const {
             // Dashboard data state
+            isRefreshing,
             hourlyBirdActivityData,
             detailedBirdActivityData,
             latestObservationData,
@@ -409,7 +434,6 @@ export default {
         // Start data fetching and charts
         const startDashboard = async () => {
             await fetchDashboardData();
-            dataFetchInterval = setInterval(fetchDashboardData, 4500)
 
             // Silent auto-check for updates (no status messages, uses backend cache)
             systemUpdate.checkForUpdates({ silent: true }).catch(() => {})
@@ -421,33 +445,71 @@ export default {
                 createTotalObsChart(totalObservationsChart, detailedBirdActivityData.value, { animate: initialLoad.value, title: null });
                 createHeatmap(hourlyActivityHeatmap, detailedBirdActivityData.value, { animate: initialLoad.value, title: null });
             }
-            chartUpdateInterval = setInterval(redrawCharts, 4500)
 
             // Initialize spectrogram canvas after DOM updates with new data
             nextTick(() => {
                 initializeCanvas();
             });
+
+            initWebSocket();
         }
+
+        const initWebSocket = () => {
+            console.log('Dashboard connecting to WebSocket via nginx proxy')
+            socket = io()
+
+            socket.on('connect', () => {
+                console.log('Dashboard connected to WebSocket')
+            })
+
+            socket.on('disconnect', () => {
+                console.log('Dashboard disconnected from WebSocket')
+            })
+
+            socket.on('connect_error', (error) => {
+                console.warn('Dashboard WebSocket connection error (will auto-retry):', error.message)
+            })
+
+            socket.on('bird_detected', () => {
+                // Debounce: wait 2s after last detection before refreshing
+                if (debounceTimer) clearTimeout(debounceTimer)
+                debounceTimer = setTimeout(() => {
+                    debounceTimer = null
+                    refreshDashboard()
+                }, 2000)
+            })
+        }
+
+        // Track whether dashboard has been initialized
+        let dashboardStarted = false;
 
         // Lifecycle hooks
         onMounted(async () => {
             // Only start fetching if location is already configured
             if (locationConfigured.value === true) {
+                dashboardStarted = true;
                 await startDashboard();
             }
         });
 
         // Watch for location to become configured (after setup modal)
         watch(locationConfigured, async (configured) => {
-            if (configured === true && !dataFetchInterval) {
+            if (configured === true && !dashboardStarted) {
+                dashboardStarted = true;
                 await startDashboard();
             }
         });
 
         onUnmounted(() => {
-            // Clear intervals
-            if (dataFetchInterval) clearInterval(dataFetchInterval)
-            if (chartUpdateInterval) clearInterval(chartUpdateInterval)
+            // Disconnect WebSocket and clear debounce timer
+            if (socket) {
+                socket.disconnect()
+                socket = null
+            }
+            if (debounceTimer) {
+                clearTimeout(debounceTimer)
+                debounceTimer = null
+            }
 
             // Cancel animation frame
             if (animationId) {
@@ -488,14 +550,14 @@ export default {
             detailedBirdActivityData.value.every(bird => bird.hourlyActivity.every(count => count === 0))
         )
 
-        // Audio 
+        // WebSocket for push-based updates
+        let socket = null
+        let debounceTimer = null
+
+        // Audio
         let audioCtx, audioAnalyser, source, frequencyDataArray, animationId;
         let spectrogramCanvasCtx, canvasWidth, canvasHeight;
         let audioElement;
-
-        // Interval
-        let dataFetchInterval;
-        let chartUpdateInterval;
 
         // Methods
         const drawSpectrogram = () => {
@@ -630,6 +692,17 @@ export default {
 	            isSpectrogramModalVisible.value = true
 	        }
 
+        // Manual refresh: fetch data then redraw charts
+        const refreshDashboard = async () => {
+            // Cancel any pending debounce to avoid double-refresh
+            if (debounceTimer) {
+                clearTimeout(debounceTimer)
+                debounceTimer = null
+            }
+            await fetchDashboardData();
+            await redrawCharts();
+        };
+
         // Redraw charts function using composable methods
         const redrawCharts = async () => {
             initialLoad.value = false;
@@ -640,6 +713,8 @@ export default {
 
         return {
             locationConfigured,
+            isRefreshing,
+            refreshDashboard,
             latestObservationData,
             recentObservationsData,
             currentSummaryPeriod,

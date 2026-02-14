@@ -4,6 +4,7 @@ import { useLogger } from "./useLogger";
 
 export function useFetchBirdData() {
   const logger = useLogger('useFetchBirdData');
+  const isRefreshing = ref(false);
   const detailedBirdActivityData = ref([]);
   const hourlyBirdActivityData = ref([]);
 
@@ -78,9 +79,10 @@ export function useFetchBirdData() {
 
   const fetchDashboardData = async () => {
     logger.info('Fetching dashboard data');
+    isRefreshing.value = true;
     try {
       const today = new Date().toLocaleDateString("en-CA");
-      fetchChartsData(today);
+      await fetchChartsData(today);
 
       const [
         latestObservationResponse,
@@ -168,6 +170,8 @@ export function useFetchBirdData() {
       });
     } catch (error) {
       logger.error('Error fetching dashboard data', error);
+    } finally {
+      isRefreshing.value = false;
     }
   };
 
@@ -198,6 +202,7 @@ export function useFetchBirdData() {
   };
 
   return {
+    isRefreshing,
     hourlyBirdActivityData,
     detailedBirdActivityData,
     latestObservationData,
