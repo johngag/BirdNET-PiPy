@@ -27,7 +27,7 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-    command: gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 -b 0.0.0.0:5002 --timeout 120 --access-logfile - 'core.api:create_gunicorn_app()'
+    command: python -m core.api
     restart: unless-stopped
     volumes:
       - ./backend:/app

@@ -2403,16 +2403,10 @@ def create_app():
 
     app.register_blueprint(api)
 
-    # Initialize SocketIO. Uses gevent async mode in production (gunicorn),
-    # falls back to threading for local dev.
+    # Initialize SocketIO.
     # `cors_allowed_origins=None` lets Engine.IO compute allowed origins from the
     # request host headers (same-origin only). Do not set this to [] (blocks all origins).
-    try:
-        import gevent  # noqa: F401
-        async_mode = 'gevent'
-    except ImportError:
-        async_mode = 'threading'
-    socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins=None, logger=False, engineio_logger=False)
+    socketio = SocketIO(app, cors_allowed_origins=None, logger=False, engineio_logger=False)
 
     # WebSocket event handlers
     @socketio.on('connect')
@@ -2435,11 +2429,6 @@ def broadcast_detection(detection_data):
             'species': detection_data.get('common_name', 'Unknown'),
             'confidence': detection_data.get('confidence')
         })
-
-def create_gunicorn_app():
-    """Entry point for gunicorn: returns just the Flask app."""
-    app, _ = create_app()
-    return app
 
 if __name__ == '__main__':
     logger.info("🌐 API server starting", extra={
