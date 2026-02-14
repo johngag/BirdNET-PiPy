@@ -3,7 +3,7 @@
 # Can be run via curl or locally after cloning repository
 #
 # Remote curl usage:
-#   curl -fsSL https://raw.githubusercontent.com/johngag/BirdNET-PiPy/main/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/Suncuss/BirdNET-PiPy/main/install.sh | sudo bash
 #
 # Local usage (after cloning):
 #   cd BirdNET-PiPy && sudo ./install.sh
@@ -19,7 +19,7 @@ trap '' HUP
 # Configuration & Constants
 # ============================================================================
 
-REPO_URL="https://github.com/johngag/BirdNET-PiPy.git"
+REPO_URL="https://github.com/Suncuss/BirdNET-PiPy.git"
 REPO_BRANCH="main"
 SERVICE_NAME="birdnet-pipy"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -184,10 +184,10 @@ show_usage() {
     echo ""
     echo "Examples:"
     echo "  # Quick install with defaults (main branch)"
-    echo "  curl -fsSL https://raw.githubusercontent.com/johngag/BirdNET-PiPy/main/install.sh | sudo bash"
+    echo "  curl -fsSL https://raw.githubusercontent.com/Suncuss/BirdNET-PiPy/main/install.sh | sudo bash"
     echo ""
     echo "  # Install from staging branch (latest features)"
-    echo "  curl -fsSL https://raw.githubusercontent.com/johngag/BirdNET-PiPy/main/install.sh | sudo bash -s -- --branch staging"
+    echo "  curl -fsSL https://raw.githubusercontent.com/Suncuss/BirdNET-PiPy/main/install.sh | sudo bash -s -- --branch staging"
     echo ""
     echo "  # Update existing installation"
     echo "  sudo ./install.sh --update"
@@ -481,7 +481,7 @@ create_service_file() {
     cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=BirdNET-PiPy Bird Detection Service
-Documentation=https://github.com/johngag/BirdNET-PiPy
+Documentation=https://github.com/Suncuss/BirdNET-PiPy
 After=docker.service network.target
 Requires=docker.service
 
@@ -772,7 +772,7 @@ cleanup_on_error() {
         print_info "TIP: It's safe to re-run the installation command - it will"
         print_info "     pick up where it left off and usually fixes the issue."
         echo ""
-        print_info "For help, visit: https://github.com/johngag/BirdNET-PiPy/issues"
+        print_info "For help, visit: https://github.com/Suncuss/BirdNET-PiPy/issues"
         print_info "Include the log file when reporting issues"
     fi
 }
