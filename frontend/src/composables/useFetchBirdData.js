@@ -22,6 +22,7 @@ export function useFetchBirdData() {
   const trendsError = ref(null);
 
   const latestObservationimageUrl = ref("/default_bird.webp");
+  let lastImageSpecies = null;
 
   const fetchChartsData = async (date) => {
     logger.info('Fetching charts data', { date });
@@ -141,17 +142,22 @@ export function useFetchBirdData() {
         : null;
 
       if (latestObservationData.value) {
-        logger.debug('Fetching wikimedia image', { species: latestObservationData.value.common_name });
-        const wikimediaImageResponse = await api.get(
-          '/wikimedia_image',
-          { params: { species: latestObservationData.value.common_name } }
-        );
-        logger.api('GET', '/wikimedia_image',
-          { species: latestObservationData.value.common_name },
-          wikimediaImageResponse);
-        if (!wikimediaImageResponse.error) {
-          latestObservationimageUrl.value =
-            wikimediaImageResponse.data.imageUrl;
+        const species = latestObservationData.value.common_name;
+        if (species !== lastImageSpecies) {
+          logger.debug('Fetching wikimedia image', { species });
+          try {
+            const wikimediaImageResponse = await api.get(
+              '/wikimedia_image',
+              { params: { species } }
+            );
+            logger.api('GET', '/wikimedia_image', { species }, wikimediaImageResponse);
+            if (!wikimediaImageResponse.error) {
+              latestObservationimageUrl.value = wikimediaImageResponse.data.imageUrl;
+              lastImageSpecies = species;
+            }
+          } catch (error) {
+            logger.error('Failed to fetch wikimedia image', error);
+          }
         }
       }
       

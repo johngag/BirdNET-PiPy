@@ -1,6 +1,20 @@
 <template>
   <div
-    v-if="birdDetails"
+    v-if="birdError"
+    class="p-8 text-center"
+  >
+    <p class="text-gray-600 mb-4">
+      {{ birdError }}
+    </p>
+    <router-link
+      :to="{ name: 'BirdGallery' }"
+      class="text-blue-600 underline hover:text-blue-800"
+    >
+      Back to Gallery
+    </router-link>
+  </div>
+  <div
+    v-else-if="birdDetails"
     class="bird-details p-4"
   >
     <h1 class="text-2xl font-semibold mb-4 text-gray-800">
@@ -42,6 +56,15 @@
           <p><span class="font-semibold text-gray-700">First Detected:</span> {{ formatDate(firstDetected) }}</p>
           <p><span class="font-semibold text-gray-700">Last Detected:</span> {{ formatDate(lastDetected) }}</p>
           <p><span class="font-semibold text-gray-700">Most Activity Time:</span> {{ peakActivityTime }}</p>
+          <a
+            v-if="birdDetails.ebird_code"
+            :href="`https://ebird.org/species/${birdDetails.ebird_code}`"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-block mt-2 text-blue-600 underline hover:text-blue-800 text-sm"
+          >
+            View on eBird
+          </a>
         </div>
       </div>
 
@@ -254,6 +277,7 @@ export default {
   setup() {
     const route = useRoute()
     const birdDetails = ref(null)
+    const birdError = ref(null)
     const totalVisits = ref(0)
     const firstDetected = ref(null)
     const lastDetected = ref(null)
@@ -381,6 +405,7 @@ export default {
         updateChart()
       } catch (error) {
         console.error('Error fetching bird details:', error)
+        birdError.value = 'Could not load bird details. The species may not have been detected yet.'
       }
     }
 
@@ -595,6 +620,7 @@ export default {
 
     return {
       birdDetails,
+      birdError,
       totalVisits,
       firstDetected,
       lastDetected,

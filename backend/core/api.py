@@ -26,6 +26,7 @@ from config.settings import (
     BASE_DIR,
     DEFAULT_AUDIO_PATH,
     DEFAULT_IMAGE_PATH,
+    EBIRD_CODES_PATH,
     EXTRACTED_AUDIO_DIR,
     LABELS_PATH,
     LABELS_V3_PATH,
@@ -89,6 +90,12 @@ logger = get_logger(__name__)
 
 api = Blueprint('api', __name__)
 db_manager = DatabaseManager()
+
+# Load eBird taxonomy codes (scientific name -> eBird species code)
+_ebird_codes = {}
+if os.path.exists(EBIRD_CODES_PATH):
+    with open(EBIRD_CODES_PATH) as f:
+        _ebird_codes = json.load(f)
 
 # Singleton TimezoneFinder (loads ~40MB shape data on first use)
 _timezone_finder: TimezoneFinder | None = None
@@ -337,7 +344,9 @@ def get_wikimedia_image():
         'species': species_name,
         'has_image': bool(image_data)
     })
-    return jsonify(image_data)
+    response = jsonify(image_data)
+    response.headers['Cache-Control'] = 'public, max-age=172800'
+    return response
 
 @api.route('/api/observations/latest', methods=['GET'])
 @log_api_request
@@ -453,6 +462,8 @@ def serve_spectrogram(filename):
 def get_bird_details(species_name):
     details = db_manager.get_bird_details(species_name)
     if details:
+        scientific_name = details.get('scientific_name', '')
+        details['ebird_code'] = _ebird_codes.get(scientific_name)
         logger.debug("Bird details retrieved", extra={
             'species': species_name,
             'total_detections': details.get('detectionCount', 0)
