@@ -471,11 +471,13 @@ export default {
             })
 
             socket.on('bird_detected', () => {
+                // Skip if a refresh is already in progress
+                if (isRefreshing.value) return
                 // Debounce: wait 2s after last detection before refreshing
                 if (debounceTimer) clearTimeout(debounceTimer)
                 debounceTimer = setTimeout(() => {
                     debounceTimer = null
-                    refreshDashboard()
+                    if (!isRefreshing.value) refreshDashboard()
                 }, 2000)
             })
         }
