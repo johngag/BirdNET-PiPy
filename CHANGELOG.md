@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-14
+
+- Switched `api` service to Gunicorn + eventlet worker for Socket.IO
+- Switched `model-server` to Gunicorn with configurable workers/threads/timeouts
+- Added WSGI entrypoint for API service (`backend/core/wsgi.py`)
+- Added backend runtime dependencies: `gunicorn` and `eventlet`
+- Added nginx upstream keepalive pooling for API proxying to reduce socket churn on Raspberry Pi
+- Replaced dashboard polling with push-based Socket.IO refresh flow (debounced updates + manual refresh button)
+- Improved dashboard refresh reliability with explicit in-progress state and guarded refresh behavior
+- Reduced repeated Wikimedia image calls for unchanged latest-observation species
+- Batched gallery image fetches for faster initial rendering
+- Added `ebird_code` in bird details API payload
+- Added direct eBird link in BirdDetails when `ebird_code` is available
+- Added graceful BirdDetails error state for missing/unavailable species pages
+- Added cache-control headers for Wikimedia image API responses
+
 ## [0.5.0] - 2026-02-13
 
 - Added BirdNET V3.0 model support (ONNX, 11K species, 32kHz) with auto-download and settings UI

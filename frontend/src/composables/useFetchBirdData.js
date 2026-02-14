@@ -4,6 +4,7 @@ import { useLogger } from "./useLogger";
 
 export function useFetchBirdData() {
   const logger = useLogger('useFetchBirdData');
+  const isRefreshing = ref(false);
   const detailedBirdActivityData = ref([]);
   const hourlyBirdActivityData = ref([]);
 
@@ -22,6 +23,7 @@ export function useFetchBirdData() {
   const trendsError = ref(null);
 
   const latestObservationimageUrl = ref("/default_bird.webp");
+  let lastImageSpecies = null;
 
   const fetchChartsData = async (date) => {
     logger.info('Fetching charts data', { date });
@@ -77,9 +79,10 @@ export function useFetchBirdData() {
 
   const fetchDashboardData = async () => {
     logger.info('Fetching dashboard data');
+    isRefreshing.value = true;
     try {
       const today = new Date().toLocaleDateString("en-CA");
-      fetchChartsData(today);
+      await fetchChartsData(today);
 
       const [
         latestObservationResponse,
@@ -141,17 +144,22 @@ export function useFetchBirdData() {
         : null;
 
       if (latestObservationData.value) {
-        logger.debug('Fetching wikimedia image', { species: latestObservationData.value.common_name });
-        const wikimediaImageResponse = await api.get(
-          '/wikimedia_image',
-          { params: { species: latestObservationData.value.common_name } }
-        );
-        logger.api('GET', '/wikimedia_image',
-          { species: latestObservationData.value.common_name },
-          wikimediaImageResponse);
-        if (!wikimediaImageResponse.error) {
-          latestObservationimageUrl.value =
-            wikimediaImageResponse.data.imageUrl;
+        const species = latestObservationData.value.common_name;
+        if (species !== lastImageSpecies) {
+          logger.debug('Fetching wikimedia image', { species });
+          try {
+            const wikimediaImageResponse = await api.get(
+              '/wikimedia_image',
+              { params: { species } }
+            );
+            logger.api('GET', '/wikimedia_image', { species }, wikimediaImageResponse);
+            if (!wikimediaImageResponse.error) {
+              latestObservationimageUrl.value = wikimediaImageResponse.data.imageUrl;
+              lastImageSpecies = species;
+            }
+          } catch (error) {
+            logger.error('Failed to fetch wikimedia image', error);
+          }
         }
       }
       
@@ -162,6 +170,8 @@ export function useFetchBirdData() {
       });
     } catch (error) {
       logger.error('Error fetching dashboard data', error);
+    } finally {
+      isRefreshing.value = false;
     }
   };
 
@@ -192,6 +202,7 @@ export function useFetchBirdData() {
   };
 
   return {
+    isRefreshing,
     hourlyBirdActivityData,
     detailedBirdActivityData,
     latestObservationData,

@@ -6,7 +6,13 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-    command: python -m model_service.inference_server
+    command: >
+      sh -c "gunicorn
+      --workers ${MODEL_SERVER_WORKERS:-1}
+      --threads ${MODEL_SERVER_THREADS:-2}
+      --timeout ${MODEL_SERVER_TIMEOUT:-180}
+      --bind 0.0.0.0:${BIRDNET_SERVICE_PORT:-5001}
+      model_service.inference_server:app"
     restart: unless-stopped
     volumes:
       - ./backend:/app
@@ -15,6 +21,9 @@ services:
     environment:
       - PYTHONPATH=/app
       - BIRDNET_SERVICE_PORT=5001
+      - MODEL_SERVER_WORKERS=1
+      - MODEL_SERVER_THREADS=2
+      - MODEL_SERVER_TIMEOUT=180
       - LOG_FORMAT=human
       - LOG_LEVEL=INFO
     ports:
@@ -27,7 +36,13 @@ services:
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
-    command: python -m core.api
+    command: >
+      sh -c "gunicorn
+      --worker-class eventlet
+      --workers ${API_WORKERS:-1}
+      --worker-connections ${API_WORKER_CONNECTIONS:-1000}
+      --bind 0.0.0.0:${API_PORT:-5002}
+      core.wsgi:app"
     restart: unless-stopped
     volumes:
       - ./backend:/app
@@ -36,6 +51,8 @@ services:
     environment:
       - PYTHONPATH=/app
       - API_PORT=5002
+      - API_WORKERS=1
+      - API_WORKER_CONNECTIONS=1000
       - LOG_FORMAT=human
       - LOG_LEVEL=INFO
     ports:
